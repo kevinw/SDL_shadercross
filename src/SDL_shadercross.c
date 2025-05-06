@@ -397,12 +397,14 @@ static void *SDL_ShaderCross_INTERNAL_CompileUsingDXC(
         defineStringsUtf16[i] = (wchar_t *)SDL_iconv_string("WCHAR_T", "UTF-8", defineString, MAX_DEFINE_STRING_LENGTH);
     }
 
-    LPCWSTR *args = SDL_malloc(sizeof(LPCWSTR) * (numDefineStrings + 11));
+    LPCWSTR *args = SDL_malloc(sizeof(LPCWSTR) * (numDefineStrings + 12));
     Uint32 argCount = 0;
 
     for (Uint32 i = 0; i < numDefineStrings; i += 1) {
         args[argCount++] = defineStringsUtf16[i];
     }
+
+    args[argCount++] = (LPCWSTR)L"-enable-16bit-types";
 
     args[argCount++] = (LPCWSTR)L"-E";
     args[argCount++] = (LPCWSTR)entryPointUtf16;
@@ -428,13 +430,13 @@ static void *SDL_ShaderCross_INTERNAL_CompileUsingDXC(
 
     if (info->shader_stage == SDL_SHADERCROSS_SHADERSTAGE_VERTEX) {
         args[argCount++] = (LPCWSTR)L"-T";
-        args[argCount++] = (LPCWSTR)L"vs_6_0";
+        args[argCount++] = (LPCWSTR)L"vs_6_2";
     } else if (info->shader_stage == SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT) {
         args[argCount++] = (LPCWSTR)L"-T";
-        args[argCount++] = (LPCWSTR)L"ps_6_0";
+        args[argCount++] = (LPCWSTR)L"ps_6_2";
     } else { // compute
         args[argCount++] = (LPCWSTR)L"-T";
-        args[argCount++] = (LPCWSTR)L"cs_6_0";
+        args[argCount++] = (LPCWSTR)L"cs_6_2";
     }
 
     if (spirv) {
