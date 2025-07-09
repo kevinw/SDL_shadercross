@@ -42,6 +42,7 @@ option(SDLSHADERCROSS_SPIRVCROSS_SHARED "Link to shared library variants of depe
 option(SDLSHADERCROSS_VENDORED "Use vendored dependencies" OFF)
 option(SDLSHADERCROSS_CLI "Build command line executable" ON)
 cmake_dependent_option(SDLSHADERCROSS_CLI_STATIC "Link CLI with static libraries" OFF "SDLSHADERCROSS_CLI;SDLSHADERCROSS_STATIC;TARGET SDL3::SDL3-static" OFF)
+cmake_dependent_option(SDLSHADERCROSS_CLI_LEAKCHECK "Check shadercross for memory leaks" OFF "SDLSHADERCROSS_CLI;TARGET SDL3::SDL3_test" OFF)
 option(SDLSHADERCROSS_WERROR "Enable Werror" OFF)
 option(SDLSHADERCROSS_INSTALL "Enable installation" OFF)
 cmake_dependent_option(SDLSHADERCROSS_INSTALL_CPACK "Enable CPack installation" OFF "SDLSHADERCROSS_INSTALL" OFF)
@@ -269,6 +270,10 @@ if(SDLSHADERCROSS_CLI)
 	sdl_add_warning_options(shadercross WARNING_AS_ERROR ${SDLSHADERCROSS_WERROR})
 	sdl_target_link_options_no_undefined(shadercross)
 
+	if(SDLSHADERCROSS_CLI_LEAKCHECK)
+		target_link_libraries(shadercross PRIVATE SDL3::SDL3_test)
+		target_compile_definitions(shadercross PRIVATE LEAKCHECK)
+	endif()
 	if(SDLSHADERCROSS_CLI_STATIC)
 		target_link_libraries(shadercross PRIVATE SDL3_shadercross::SDL3_shadercross-static)
 		target_link_libraries(shadercross PRIVATE SDL3::SDL3-static)
@@ -424,11 +429,6 @@ if(SDLSHADERCROSS_INSTALL_MAN)
 	)
 endif()
 
-set(DXC_LINUX_X64_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/linux_dxc_2024_07_31.x86_64.tar.gz")
-set(DXC_LINUX_X64_HASH "SHA256=b58725ac191df0686994fb9d54d27ee8dd3f180b023d562733112a499ea1195c")
-set(DXC_WINDOWS_X86_X64_ARM64_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/dxc_2024_07_31.zip")
-set(DXC_WINDOWS_X86_X64_ARM64_HASH "SHA256=e2627f004f0f9424d8c71ea1314d04f38c5a5096884ae9217f1f18bd320267b5")
-
 if(SDLSHADERCROSS_INSTALL_RUNTIME)
 	set(chmod_0755 OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 	if(APPLE)
@@ -515,8 +515,8 @@ if(SDLSHADERCROSS_INSTALL_RUNTIME)
 		find_package(BISON REQUIRED)
 		ExternalProject_Add(vkd3d
 			DEPENDS 			spirv_headers vulkan_headers vulkan_loader
-			URL					"https://dl.winehq.org/vkd3d/source/vkd3d-1.15.tar.xz"
-			URL_HASH			"SHA256=c35366f6f39b5e89ed9b77ef21520f1b8d689ac9c4dcabee360e72dd9b75c471"
+			URL					"https://dl.winehq.org/vkd3d/source/vkd3d-1.16.tar.xz"
+			URL_HASH			"SHA256=b4aef432ba1b533465b959d0e1bd22fac4610b7e178c95b3ff153854ef0f4136"
 			DOWNLOAD_EXTRACT_TIMESTAMP "1"
 			CONFIGURE_COMMAND 	"sh" "<SOURCE_DIR>/configure" "--prefix=<INSTALL_DIR>" "--enable-tests=no" "--enable-demos=no" "--disable-doxygen-doc" "CFLAGS=-I${spirv_headers_install_dir}/include -I${vulkan_headers_install_dir}/include -I${vulkan_loader_install_dir}/include ${configure_CFLAGS}" "LDFLAGS=-L${vulkan_loader_install_dir}/lib" "BISON=${BISON_EXECUTABLE}"
 			BUILD_COMMAND	 	"make"
@@ -532,6 +532,7 @@ if(SDLSHADERCROSS_INSTALL_RUNTIME)
 		find_program(PATCHELF_BIN NAMES "patchelf" REQUIRED)
 		install(CODE "file(GLOB so_paths \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/*so*\")\n  foreach(so_path \${so_paths})\n    if(NOT IS_SYMLINK \${so_path})\n      message(STATUS \"Adding \\\"\$ORIGIN\\\" to RPATH of \${so_path}\")\n      execute_process(COMMAND ${PATCHELF_BIN} \"\${so_path}\" --add-rpath \"\$ORIGIN\")\n    endif()\n  endforeach()")
 	elseif(APPLE)
-		# FIXME: Apple probably needs to do something similar as Linux, but using otool
+		find_program(INT_BIN NAMES "install_name_tool" REQUIRED)
+		install(CODE "file(GLOB so_paths \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/*dylib*\")\n  foreach(so_path \${so_paths})\n    if(NOT IS_SYMLINK \${so_path})\n      message(STATUS \"Adding \\\"\@loader_path\\\" to RPATH of \${so_path}\")\n      execute_process(COMMAND ${INT_BIN} \"\${so_path}\" -add_rpath \"\@loader_path\")\n    endif()\n  endforeach()")
 	endif()
 endif()
