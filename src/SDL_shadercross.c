@@ -400,7 +400,7 @@ static void *SDL_ShaderCross_INTERNAL_CompileUsingDXC(
         defineStringsUtf16[i] = (wchar_t *)SDL_iconv_string("WCHAR_T", "UTF-8", defineString, MAX_DEFINE_STRING_LENGTH);
     }
 
-    LPCWSTR *args = SDL_malloc(sizeof(LPCWSTR) * (numDefineStrings + 12));
+    LPCWSTR *args = SDL_malloc(sizeof(LPCWSTR) * (numDefineStrings + 13));
     Uint32 argCount = 0;
 
     for (Uint32 i = 0; i < numDefineStrings; i += 1) {
@@ -445,6 +445,8 @@ static void *SDL_ShaderCross_INTERNAL_CompileUsingDXC(
     if (spirv) {
         args[argCount++] = (LPCWSTR)L"-spirv";
         args[argCount++] = (LPCWSTR)L"-fspv-flatten-resource-arrays";
+        args[argCount++] = (LPCWSTR)L"-fspv-preserve-bindings";
+        args[argCount++] = (LPCWSTR)L"-fspv-preserve-interface";
     }
 
     if (info->enable_debug) {
@@ -1635,7 +1637,6 @@ void SDL_ShaderCross_INTERNAL_GetIOVars(
     SDL_ShaderCross_IOVarMetadata* vars,
     char *name_buffer
 ) {
-    Uint32 offset = 0;
     size_t name_buffer_offset = 0;
     for (size_t i = 0; i < num_vars; i++) {
         SDL_ShaderCross_IOVarMetadata* var = &vars[i];
@@ -1689,8 +1690,6 @@ void SDL_ShaderCross_INTERNAL_GetIOVars(
         SDL_memcpy(var->name, resource->name, length_name);
         name_buffer_offset += length_name;
         var->location = spvc_compiler_get_decoration(compiler, resource->id, SpvDecorationLocation);
-        var->offset = offset;
-        offset += (spvc_type_get_bit_width(type) / 8) * vector_size;
     }
 }
 
@@ -2533,8 +2532,6 @@ static void *SDL_ShaderCross_INTERNAL_CreateShaderFromSPIRV(
             if (createInfo.props != 0) {
                 SDL_DestroyProperties(createInfo.props);
             }
-
-            SDL_free(pipelineMetadata);
 
             return result;
         } else {
